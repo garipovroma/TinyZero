@@ -499,6 +499,16 @@ class ActorRolloutRefWorker(Worker):
                 hdfs_io.makedirs(hdfs_path, exist_ok=True)
                 hdfs_io.copy(src=local_path, dst=hdfs_path)
 
+        ## NIRVANA CHECKPOINTING
+        if "NV_YT_OPERATION_ID" in os.environ:
+            print("IN_NIRVANA: True")
+            nirvana_checkpoint_freq_ = os.getenv("NIRVANA_CHECKPOINT_FREQ", 1)
+            should_save = (global_step % nirvana_checkpoint_freq_ == nirvana_checkpoint_freq_ - 1)
+            if should_save and self.rank == 0:
+                print("RUNNING NIRVANA SNAPSHOT DUMP")
+                import nirvana_dl
+                nirvana_dl.snapshot.dump_snapshot()
+
         torch.distributed.barrier()
         if self._is_offload_param:
             offload_fsdp_param_and_grad(module=self.actor_module_fsdp, offload_grad=self._is_offload_grad)
@@ -755,6 +765,16 @@ class CriticWorker(Worker):
                 print(f'Uploading critic checkpoint to {hdfs_path}')
                 hdfs_io.makedirs(hdfs_path, exist_ok=True)
                 hdfs_io.copy(src=local_path, dst=hdfs_path)
+            
+        ## NIRVANA CHECKPOINTING
+        if "NV_YT_OPERATION_ID" in os.environ:
+            print("IN_NIRVANA: True")
+            nirvana_checkpoint_freq_ = os.getenv("NIRVANA_CHECKPOINT_FREQ", 1)
+            should_save = (global_step % nirvana_checkpoint_freq_ == nirvana_checkpoint_freq_ - 1)
+            if should_save and self.rank == 0:
+                print("RUNNING NIRVANA SNAPSHOT DUMP")
+                import nirvana_dl
+                nirvana_dl.snapshot.dump_snapshot()
 
         torch.distributed.barrier()
         if self._is_offload_param:
